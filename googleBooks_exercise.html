@@ -1,0 +1,207 @@
+<html>
+<head>
+	<title>Google Books Search Engine</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<style>
+	.error {
+		padding: 20px;
+	}
+	#results {
+		list-style-type: none;
+	}
+</style>
+<body>
+<div class="container" id="resultsArea">
+	<div class="blog-header">
+        <h1 class="blog-title">BookFindr</h1>
+		<p class="lead blog-description">Fast and Simple.</p> 
+        <p>Type your search in to the bar below to add to the list.</p>
+    </div>
+	<div id="searchArea">
+		<input id="searchBar" placeholder="Input search term here"/>
+		<button id="searchBtn">Search</button>
+		<button id="clearBtn">Clear</button>
+	</div>
+	<div class="row">
+		<ul id="error"></ul>
+		<br>
+		<ul class="list-group" id="results">
+		</ul>
+	</div>
+</div>
+<script
+  src="https://code.jquery.com/jquery-3.1.1.min.js"
+  integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+  crossorigin="anonymous"></script>
+<script type="text/javascript">
+/**
+ * 0) Remove the div with id="instructions".  You will be modifying this file.
+ *
+ * 1) Research the Google Books Volume API to determine
+ *    how to search for books given a query.
+ *	  https://developers.google.com/books/docs/v1/reference/volumes
+ *
+ * 2) You may use jQuery.
+ *
+ * 3) Given the following HTML, you are tasked with building a basic search engine
+ *    for Google Books.  There should be a search bar to input a query that will be
+ *	  be passed as an argument to the Google Books API.  The results should be rendered
+ *	  in the results area.  You must include at least (if available for the record):
+ *		+ Cover image
+ *		+ Title
+ *		+ Subtitle
+ *		+ Authors
+ *
+ *	  Additionally, each results should somehow provide a link to item's Google Books page.
+ *    hint: Look at a Google Books entry on Google Books, and see which parameter might help you.
+ *
+ * 4) Results should be styled logically
+ *
+ * 5) Each subsequent query should append its results to the results area.
+ *    There must be no duplicates (by Google Books id).
+ *
+ * 6) Note: While you must use the three function stubs provided below,
+ *    This will require you to write some code outside of them.
+ *
+ */
+ // Matthew Hough Code
+$( document ).ready(function() {
+
+/************ Stored Variable **************/
+var SearchBtn = document.getElementById('searchBtn');
+var clearBtn = document.getElementById('clearBtn');
+var term = document.getElementById('searchBar');
+var results = document.getElementById('results');
+var error = document.getElementById('error');
+var idCheck = [];
+var masterList = [];
+SearchBtn.addEventListener('click', render);
+clearBtn.addEventListener('click', clearResultsArea);
+
+/**
+ * Renders an error message
+ * @param msg {string} - error message to render
+ */
+function showError(msg) {
+	var html = '<li id="err"><p id="err" class="error bg-warning">' + msg + '</p></li>';
+	$("#results").html(html);
+	
+	return html;
+}
+
+/**
+ * Searches for books and returns a JSON list
+ * @param term {string} - search term
+ * @param callback {function} - do something with results
+ */
+function searchForBooks(term, callback) {
+	// TODO
+	var key = "AIzaSyAUlS2wPGSECecjEGsvRJnAu-0hPVNU7Os";
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', 'https://www.googleapis.com/books/v1/volumes?q={'+term+'}');
+	xhr.onload = function() {
+		if (xhr.status === 200) {
+			var data = xhr.responseText;
+			callback(data);
+		}
+		else {
+			alert('Request failed.  Returned status of ' + xhr.status);
+		}
+	};
+	xhr.send();
+}
+
+/**
+ * Render loadedBooks contents
+ * Generates HTML and sets #results's contents to it
+ */
+function render() {
+	searchForBooks(term.value, function(data) {
+		data = JSON.parse(data);
+		var newItems = data.items;
+		for(var i = 0; i < newItems.length; i++) {
+			if(checkList(newItems[i].id, idCheck) === -1) {
+				if($('#err')) {
+					$('#err').remove();
+				}
+				renderArray(results, newItems[i]);
+				idCheck.push(newItems[i].id);
+				masterList.push(newItems[i]);
+			} // end if
+			else {
+				showError(term.value + ' has already been added.');
+				for(var i = 0; i < masterList.length; i ++) {
+					renderArray(results, masterList[i]);
+				}
+			}
+		}// end for
+
+	}); // end searchForBooks
+} // end render
+
+// Clear results area 
+function clearResultsArea() {
+	clearSection(results);
+	idCheck = [];
+}
+
+
+/* helper functions */
+
+// Create HTML structure per list item
+function formatHtml(id, image, title, subtitle, authors, link) {
+	var listItem = document.createElement('li');
+	listItem.setAttribute('id', id);
+	listItem.setAttribute('class', 'list-group-item');
+	listItem.innerHTML += 
+	'<div class=\"row\">'
+	+'<div class=\"col-md-1\">' 
+	+ '<img src=\"'+checkValue(image)+'\" width=\"65\" />' 
+	+ '</div>' 
+	+ '<div class=\"col-md-10\">' 
+	+ '<h3>'+title+'</h3>' 
+	+ '<p>'+checkValue(subtitle)+'</p>'
+	+ '<p>'+checkValue(authors)+'</p>'
+	+'<a target=\"_blank\" class=\"btn btn-primary\" href=\"'+link+'\">View</a>'
+	+ '</div>'
+	+ '</div>';
+	return listItem;
+}
+
+// check global array to see if value has been added
+function checkList(value, array) {
+	return $.inArray(value, array);
+}
+
+// Check if value exists, and if not - return empty string
+function checkValue(value) {
+	if(value === undefined){
+		return '';
+	} else {
+		return value;
+	}
+}
+
+// Clears HTML of specified section
+function clearSection(section) {
+    while(section.firstChild){
+        section.removeChild(section.firstChild);
+    }
+}
+
+function renderArray(section, arrayItem) {
+	section.append(formatHtml(
+		arrayItem.id,
+		arrayItem.volumeInfo.imageLinks.smallThumbnail,
+		arrayItem.volumeInfo.title,
+		arrayItem.volumeInfo.subtitle,
+		arrayItem.volumeInfo.authors,
+		arrayItem.volumeInfo.canonicalVolumeLink
+		));
+}
+
+});
+</script>
+</body>
+</html>
